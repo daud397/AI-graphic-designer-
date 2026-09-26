@@ -72,11 +72,19 @@ body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:radial-grad
 
 <div id="login"><div class="box">
   <h1>MUHSQ</h1><div class="sub">AI Creative Agent</div>
-  <label>PIN</label><input id="l_pin" type="password" inputmode="numeric" placeholder="····">
-  <label>Your OpenAI API Key</label><input id="l_key" type="password" placeholder="sk-...">
-  <div class="note">Your key is used only for this session to generate your designs — it is never saved to our database or shared with Revero. You'll enter it again next time you sign in.</div>
-  <button onclick="doLogin()">Sign in</button>
-  <div class="err" id="lerr"></div>
+  <div id="step1">
+    <label>Username</label><input id="l_user" type="text" placeholder="Enter your username">
+    <label>Password</label><input id="l_pass" type="password" placeholder="Enter your password">
+    <button onclick="verifyCredentials()">Continue</button>
+    <div class="err" id="lerr"></div>
+  </div>
+  <div id="step2" style="display:none">
+    <label>Your OpenAI API Key</label><input id="l_key" type="password" placeholder="sk-...">
+    <div class="note">Your key is used only for this session to generate your designs — it is never saved to our database or shared with Revero. You'll enter it again next time you sign in.</div>
+    <button onclick="doLogin()">Sign in</button>
+    <button onclick="backToStep1()" style="background:var(--panel);color:var(--dim);margin-top:8px">Back</button>
+    <div class="err" id="lerr2"></div>
+  </div>
 </div></div>
 
 <div class="app" id="app"><div class="wrap">
@@ -122,11 +130,28 @@ body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:radial-grad
 
 <script>
 let TOKEN='';
+let currentUser={};
 function af(u,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json'},o.headers||{},TOKEN?{'x-auth-token':TOKEN}:{});return fetch(u,o);}
-function doLogin(){
-  const pin=document.getElementById('l_pin').value, key=document.getElementById('l_key').value;
-  af('/api/login',{method:'POST',body:JSON.stringify({pin,apiKey:key})}).then(r=>r.json()).then(res=>{
+function verifyCredentials(){
+  const username=document.getElementById('l_user').value.trim(), password=document.getElementById('l_pass').value;
+  if(!username){document.getElementById('lerr').textContent='Username required';return;}
+  if(!password){document.getElementById('lerr').textContent='Password required';return;}
+  af('/api/login/verify',{method:'POST',body:JSON.stringify({username,password})}).then(r=>r.json()).then(res=>{
     if(res.error){document.getElementById('lerr').textContent=res.error;return;}
+    currentUser={username,password}; currentUser.data=res.user;
+    document.getElementById('step1').style.display='none'; document.getElementById('step2').style.display='block';
+    document.getElementById('lerr').textContent='';
+  });
+}
+function backToStep1(){
+  document.getElementById('step1').style.display='block'; document.getElementById('step2').style.display='none';
+  document.getElementById('l_key').value=''; document.getElementById('lerr2').textContent='';
+}
+function doLogin(){
+  const key=document.getElementById('l_key').value;
+  if(!key || !key.trim()){document.getElementById('lerr2').textContent='Please enter your OpenAI API key';return;}
+  af('/api/login',{method:'POST',body:JSON.stringify({username:currentUser.username,password:currentUser.password,apiKey:key})}).then(r=>r.json()).then(res=>{
+    if(res.error){document.getElementById('lerr2').textContent=res.error;return;}
     TOKEN=res.token; document.getElementById('who').textContent=res.user.name;
     document.getElementById('login').style.display='none'; document.getElementById('app').style.display='block';
     loadBrand(); refreshStats();

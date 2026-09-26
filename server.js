@@ -59,12 +59,21 @@ function brandContext(){
 }
 
 // ---- auth endpoints ----
+app.post('/api/login/verify', loginLimiter, (req,res)=>{
+  const {username,password}=req.body||{};
+  if(!username) return res.status(400).json({error:'Username required'});
+  if(!password) return res.status(400).json({error:'Password required'});
+  const u=db.prepare('SELECT id,name,role FROM users WHERE username=? AND password=?').get(String(username),String(password));
+  if(!u) return res.status(401).json({error:'Invalid username or password'});
+  res.json({ok:true, user:u});
+});
 app.post('/api/login', loginLimiter, (req,res)=>{
-  const {pin,apiKey}=req.body||{};
-  if(!pin) return res.status(400).json({error:'PIN required'});
+  const {username,password,apiKey}=req.body||{};
+  if(!username) return res.status(400).json({error:'Username required'});
+  if(!password) return res.status(400).json({error:'Password required'});
   if(!apiKey || !apiKey.trim()) return res.status(400).json({error:'Please enter your OpenAI API key'});
-  const u=db.prepare('SELECT id,name,role FROM users WHERE pin=?').get(String(pin));
-  if(!u) return res.status(401).json({error:'Invalid PIN'});
+  const u=db.prepare('SELECT id,name,role FROM users WHERE username=? AND password=?').get(String(username),String(password));
+  if(!u) return res.status(401).json({error:'Invalid username or password'});
   const token=newSession(u.role, apiKey.trim());
   res.json({ok:true, user:u, token});
 });
