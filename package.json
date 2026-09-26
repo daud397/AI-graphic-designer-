@@ -1,0 +1,14 @@
+{
+  "name": "muhsq-ai-creative-agent",
+  "version": "1.0.0",
+  "description": "MUHSQ — AI Creative Agent (design generation, prompt-editing, approval, brand memory)",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": "20.x" },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "express": "^4.19.2",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.4.0"
+  }
+}

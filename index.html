@@ -1,0 +1,210 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MUHSQ — AI Creative Agent</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0c0b10;--panel:#161520;--panel2:#1f1d2c;--line:#2e2b3f;--text:#f0edf7;--dim:#a099b5;--acc:#d4af37;--acc2:#e8c66a;--green:#22c55e;--amber:#f59e0b;--red:#e05c5c}
+body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:radial-gradient(1100px 520px at 50% -10%,#1c1830,#0c0b10);color:var(--text);min-height:100vh}
+#login{position:fixed;inset:0;background:#0a090d;display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+#login .box{max-width:380px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px}
+#login h1{font-family:Georgia,serif;font-size:24px;text-align:center;letter-spacing:.06em}
+#login .sub{text-align:center;color:var(--dim);font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:4px 0 20px}
+#login label{font-size:12px;color:var(--dim);display:block;margin:12px 0 5px}
+#login input{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:14px}
+#login .note{font-size:11.5px;color:var(--dim);margin-top:8px;line-height:1.5}
+#login button{width:100%;margin-top:16px;padding:13px;border:none;border-radius:9px;background:linear-gradient(100deg,var(--acc),var(--acc2));color:#241c00;font-weight:800;cursor:pointer;font-size:14.5px}
+.err{color:var(--red);font-size:13px;margin-top:8px;min-height:16px}
+.app{display:none}
+.wrap{max-width:1040px;margin:0 auto;padding:20px 18px 60px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.brand{font-family:Georgia,serif;font-weight:800;font-size:20px;letter-spacing:.1em}
+.top button{background:none;border:1px solid var(--line);color:var(--dim);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:12.5px}
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tab{background:var(--panel2);border:1px solid var(--line);color:var(--dim);padding:9px 16px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer}
+.tab.active{background:var(--acc);color:#241c00}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:18px}
+.panel h3{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--acc2);margin-bottom:12px;font-weight:700}
+.row{display:flex;gap:10px}
+.row input,.row select,textarea{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:11px 13px;border-radius:9px;font-size:14px}
+.row input{flex:1}
+.gen{background:linear-gradient(100deg,var(--acc),var(--acc2));color:#0b0d12;border:none;border-radius:9px;padding:0 20px;font-weight:800;font-size:14.5px;cursor:pointer}
+.gen:disabled{opacity:.55}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.presets button{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:8px 13px;border-radius:20px;font-size:12.5px;cursor:pointer}
+.loading{display:none;text-align:center;padding:26px;color:var(--dim)}
+.loading.show{display:block}
+.spin{width:32px;height:32px;border:3px solid var(--line);border-top-color:var(--acc);border-radius:50%;margin:0 auto 10px;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.card img{width:100%;aspect-ratio:1;object-fit:cover;background:#000}
+.cap{padding:12px;flex:1;display:flex;flex-direction:column;gap:6px}
+.cap p{font-size:13px;line-height:1.45}
+.cap .tags{font-size:11.5px;color:var(--acc2)}
+.acts{display:flex;gap:6px;padding:0 12px 10px}
+.acts button{flex:1;padding:8px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;border:none}
+.approve{background:var(--green);color:#04240f}
+.editb{background:var(--panel);color:var(--acc2);border:1px solid var(--line)}
+.reject{background:var(--panel);color:var(--dim);border:1px solid var(--line)}
+.editbox{padding:0 12px 12px;display:none}
+.editbox.show{display:block}
+.editbox .er{display:flex;gap:6px}
+.editbox input{flex:1;font-size:12.5px;padding:8px}
+.editbox .go{background:var(--acc);color:#241c00;border:none;border-radius:8px;padding:0 10px;font-weight:800;cursor:pointer}
+.status{padding:12px;text-align:center;font-weight:700;font-size:13px}
+.status.ok{color:var(--green)} .status.warn{color:var(--amber)}
+.memory{display:flex;gap:12px;flex-wrap:wrap}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 18px}
+.stat b{display:block;font-size:22px;font-weight:800}
+.stat span{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+.gal{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:700px){.gal{grid-template-columns:repeat(2,1fr)}}
+.gitem{border-radius:10px;overflow:hidden;border:1px solid var(--line);position:relative}
+.gitem img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.gitem .tag{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.65);color:#fff;font-size:10px;padding:3px 7px;border-radius:10px;text-transform:uppercase;font-weight:700}
+.note{font-size:12px;color:var(--dim);margin-top:8px;line-height:1.5}
+.field{margin-bottom:10px}
+.field label{font-size:12px;color:var(--dim);display:block;margin-bottom:4px}
+.field input,.field textarea{width:100%}
+.save{background:var(--acc);color:#241c00;border:none;border-radius:9px;padding:10px 18px;font-weight:800;cursor:pointer}
+</style></head><body>
+
+<div id="login"><div class="box">
+  <h1>MUHSQ</h1><div class="sub">AI Creative Agent</div>
+  <label>PIN</label><input id="l_pin" type="password" inputmode="numeric" placeholder="····">
+  <label>Your OpenAI API Key</label><input id="l_key" type="password" placeholder="sk-...">
+  <div class="note">Your key is used only for this session to generate your designs — it is never saved to our database or shared with Revero. You'll enter it again next time you sign in.</div>
+  <button onclick="doLogin()">Sign in</button>
+  <div class="err" id="lerr"></div>
+</div></div>
+
+<div class="app" id="app"><div class="wrap">
+  <div class="top"><div class="brand">MUHSQ</div><div><span id="who" style="font-size:12px;color:var(--dim);margin-right:10px"></span><button onclick="logout()">Sign out</button></div></div>
+  <div class="tabs">
+    <div class="tab active" onclick="tab('gen',this)">Create</div>
+    <div class="tab" onclick="tab('gallery',this)">Gallery &amp; Memory</div>
+    <div class="tab" onclick="tab('brand',this)">Brand Settings</div>
+  </div>
+
+  <div id="view-gen">
+    <div class="panel">
+      <h3>What are we posting?</h3>
+      <div class="presets">
+        <button onclick="pick('New Winter Collection')">Winter Collection</button>
+        <button onclick="pick('Eid Festive Edit')">Eid Festive Edit</button>
+        <button onclick="pick('End of Season Sale')">Season Sale</button>
+        <button onclick="pick('New Unstitched Lawn Drop')">New Lawn Drop</button>
+        <button onclick="pick('Wedding Formals')">Wedding Formals</button>
+      </div>
+      <div class="row"><input id="brief" placeholder="…or type any campaign"><button class="gen" id="genBtn" onclick="generate()">Generate ✦</button></div>
+      <div class="note">The agent designs backgrounds, layouts, badges &amp; captions. Place your real product photo over the design before posting — true photo-compositing is a Phase 2 upgrade once your product images are connected.</div>
+    </div>
+    <div class="loading" id="loading"><div class="spin"></div>Generating 3 on-brand options…</div>
+    <div id="results"></div>
+    <div class="panel" id="memPanel" style="display:none"><h3>Brand Memory</h3><div class="memory" id="memBox"></div></div>
+  </div>
+
+  <div id="view-gallery" style="display:none">
+    <div class="panel"><h3>Approved &amp; Posted Gallery</h3><div class="gal" id="gal"></div></div>
+  </div>
+
+  <div id="view-brand" style="display:none">
+    <div class="panel"><h3>Brand Settings</h3>
+      <div class="field"><label>Brand name</label><input id="b_name"></div>
+      <div class="field"><label>Tone of voice</label><input id="b_tone" placeholder="e.g. elegant, premium, warm"></div>
+      <div class="row" style="margin-bottom:10px"><div class="field" style="flex:1"><label>Primary colour (hex)</label><input id="b_c1"></div><div class="field" style="flex:1"><label>Secondary colour (hex)</label><input id="b_c2"></div></div>
+      <div class="field"><label>Notes (do's/don'ts, hashtags, style rules)</label><textarea id="b_notes" rows="4" style="width:100%"></textarea></div>
+      <button class="save" onclick="saveBrand()">Save</button>
+    </div>
+  </div>
+</div></div>
+
+<script>
+let TOKEN='';
+function af(u,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json'},o.headers||{},TOKEN?{'x-auth-token':TOKEN}:{});return fetch(u,o);}
+function doLogin(){
+  const pin=document.getElementById('l_pin').value, key=document.getElementById('l_key').value;
+  af('/api/login',{method:'POST',body:JSON.stringify({pin,apiKey:key})}).then(r=>r.json()).then(res=>{
+    if(res.error){document.getElementById('lerr').textContent=res.error;return;}
+    TOKEN=res.token; document.getElementById('who').textContent=res.user.name;
+    document.getElementById('login').style.display='none'; document.getElementById('app').style.display='block';
+    loadBrand(); refreshStats();
+  });
+}
+function logout(){ af('/api/logout',{method:'POST'}).then(()=>location.reload()); }
+function tab(name,el){ document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); el.classList.add('active');
+  document.getElementById('view-gen').style.display=name==='gen'?'block':'none';
+  document.getElementById('view-gallery').style.display=name==='gallery'?'block':'none';
+  document.getElementById('view-brand').style.display=name==='brand'?'block':'none';
+  if(name==='gallery') loadGallery();
+}
+function pick(t){document.getElementById('brief').value=t;generate();}
+let lastOptions=[];
+function generate(){
+  const t=document.getElementById('brief').value.trim(); if(!t)return;
+  document.getElementById('results').innerHTML=''; document.getElementById('loading').classList.add('show'); document.getElementById('genBtn').disabled=true;
+  af('/api/generate',{method:'POST',body:JSON.stringify({brief:t})}).then(r=>r.json()).then(res=>{
+    document.getElementById('loading').classList.remove('show'); document.getElementById('genBtn').disabled=false;
+    if(res.error){ alert(res.error); return; }
+    lastOptions=res.options; render();
+  }).catch(()=>{ document.getElementById('loading').classList.remove('show'); document.getElementById('genBtn').disabled=false; alert('Something went wrong contacting OpenAI.'); });
+}
+function render(){
+  let html='<div class="panel"><h3>Approve, edit, or reject</h3><div class="grid">';
+  lastOptions.forEach(function(o){
+    html+='<div class="card" id="card'+o.id+'"><img src="'+o.image+'">'+
+      '<div class="cap"><p>'+o.caption+'</p><div class="tags">'+(o.tags||'')+'</div></div>'+
+      '<div class="acts" id="acts'+o.id+'"><button class="approve" onclick="approve('+o.id+')">✓ Approve</button><button class="editb" onclick="toggleEdit('+o.id+')">✎ Edit</button><button class="reject" onclick="reject('+o.id+')">✕ Reject</button></div>'+
+      '<div class="editbox" id="eb'+o.id+'"><div class="er"><input id="ei'+o.id+'" placeholder="What should change?"><button class="go" onclick="applyEdit('+o.id+')">Apply</button></div></div></div>';
+  });
+  html+='</div></div>';
+  document.getElementById('results').innerHTML=html;
+  document.getElementById('memPanel').style.display='block';
+}
+function toggleEdit(id){ document.getElementById('eb'+id).classList.toggle('show'); }
+function applyEdit(id){
+  const instr=document.getElementById('ei'+id).value.trim(); if(!instr)return;
+  const card=document.getElementById('card'+id);
+  card.querySelector('.acts').outerHTML='<div class="status warn">✎ Applying your edit…</div>';
+  af('/api/options/'+id+'/edit',{method:'POST',body:JSON.stringify({instruction:instr})}).then(r=>r.json()).then(res=>{
+    if(res.error){ alert(res.error); return; }
+    card.querySelector('img').src=res.option.image+'?t='+Date.now();
+    card.innerHTML=card.innerHTML; // no-op keep
+    reRenderCard(id,res.option);
+  });
+}
+function reRenderCard(id,o){
+  document.getElementById('card'+id).innerHTML='<img src="'+o.image+'">'+
+    '<div class="cap"><p>'+o.caption+'</p><div class="tags">'+(o.tags||'')+'</div></div>'+
+    '<div class="acts" id="acts'+id+'"><button class="approve" onclick="approve('+id+')">✓ Approve</button><button class="editb" onclick="toggleEdit('+id+')">✎ Edit</button><button class="reject" onclick="reject('+id+')">✕ Reject</button></div>'+
+    '<div class="editbox" id="eb'+id+'"><div class="er"><input id="ei'+id+'" placeholder="What should change?"><button class="go" onclick="applyEdit('+id+')">Apply</button></div></div>';
+}
+function approve(id){ af('/api/options/'+id+'/approve',{method:'POST'}).then(r=>r.json()).then(function(){
+  document.getElementById('acts'+id).outerHTML='<div class="status ok">✓ Approved — ready to post</div>'; refreshStats(); }); }
+function reject(id){ af('/api/options/'+id+'/reject',{method:'POST',body:JSON.stringify({})}).then(r=>r.json()).then(function(){
+  document.getElementById('acts'+id).outerHTML='<div class="status" style="color:var(--dim)">✕ Rejected</div>'; refreshStats(); }); }
+function refreshStats(){ af('/api/stats').then(r=>r.json()).then(function(s){
+  document.getElementById('memPanel').style.display='block';
+  document.getElementById('memBox').innerHTML=
+    '<div class="stat"><b>'+s.approved+'</b><span>Approved</span></div>'+
+    '<div class="stat"><b>'+s.posted+'</b><span>Posted</span></div>'+
+    '<div class="stat"><b>'+s.learned+'</b><span>Style signals</span></div>';
+}); }
+function loadGallery(){ af('/api/gallery').then(r=>r.json()).then(function(rows){
+  document.getElementById('gal').innerHTML=rows.map(function(r){
+    return '<div class="gitem"><div class="tag">'+r.status+'</div><img src="'+r.image+'">'+
+      (r.status==='approved'?'<button onclick="markPosted('+r.id+')" style="width:100%;padding:8px;border:none;background:var(--acc);color:#241c00;font-weight:700;cursor:pointer">Mark Posted</button>':'')+
+      '</div>';
+  }).join('')||'<div class="note">Nothing here yet — approve a design first.</div>';
+}); }
+function markPosted(id){ af('/api/options/'+id+'/posted',{method:'POST'}).then(()=>{ loadGallery(); refreshStats(); }); }
+function loadBrand(){ af('/api/brand').then(r=>r.json()).then(function(b){
+  document.getElementById('b_name').value=b.name; document.getElementById('b_tone').value=b.tone;
+  document.getElementById('b_c1').value=b.color1; document.getElementById('b_c2').value=b.color2; document.getElementById('b_notes').value=b.notes||'';
+}); }
+function saveBrand(){ af('/api/brand',{method:'POST',body:JSON.stringify({
+  name:document.getElementById('b_name').value, tone:document.getElementById('b_tone').value,
+  color1:document.getElementById('b_c1').value, color2:document.getElementById('b_c2').value, notes:document.getElementById('b_notes').value
+})}).then(r=>r.json()).then(function(res){ if(res.error){alert(res.error);return;} alert('Brand settings saved.'); }); }
+</script></body></html>
