@@ -56,11 +56,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .editb:hover{border-color:var(--accent)}
 .reject{background:var(--secondary);color:var(--text-secondary);border:1px solid var(--divider)}
 .reject:hover{border-color:var(--error);color:var(--error)}
-.editbox{padding:0 16px 16px;display:none}
-.editbox.show{display:block}
-.editbox .er{display:flex;gap:8px}
-.editbox input{flex:1;font-size:14px;padding:10px 12px;border:1px solid var(--divider);border-radius:var(--radius-sm);background:var(--secondary);color:var(--text);font-family:inherit}
-.editbox .go{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:10px 14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.editbox{padding:16px;display:block;background:var(--secondary);border-radius:var(--radius-sm);margin-top:12px}
+.editbox .er{display:flex;gap:8px;flex-direction:column}
+.editbox input{font-size:14px;padding:10px 12px;border:1px solid var(--divider);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:inherit}
+.editbox .go{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:10px 14px;font-weight:600;cursor:pointer;white-space:nowrap;font-size:14px}
 .editbox .go:hover{background:var(--accent-hover)}
 .status{padding:16px;text-align:center;font-weight:600;font-size:14px}
 .status.ok{color:var(--success)}
@@ -160,45 +159,59 @@ function tab(name,el){ document.querySelectorAll('.tab').forEach(t=>t.classList.
   if(name==='gallery') loadGallery();
 }
 function pick(t){document.getElementById('brief').value=t;generate();}
-let lastOptions=[];
+let lastOptions=[], editHistory={}, batch={}, templates=['✨ Add luxury feel','🎉 More festive','🎯 Simplify','⚡ Increase contrast','📝 Add text'];
 function generate(){
   const t=document.getElementById('brief').value.trim(); if(!t)return;
   document.getElementById('results').innerHTML=''; document.getElementById('loading').classList.add('show'); document.getElementById('genBtn').disabled=true;
   af('/api/generate',{method:'POST',body:JSON.stringify({brief:t})}).then(r=>r.json()).then(res=>{
     document.getElementById('loading').classList.remove('show'); document.getElementById('genBtn').disabled=false;
     if(res.error){ alert(res.error); return; }
-    lastOptions=res.options; render();
+    lastOptions=res.options; editHistory={}; batch={}; render();
   }).catch(()=>{ document.getElementById('loading').classList.remove('show'); document.getElementById('genBtn').disabled=false; alert('Something went wrong contacting OpenAI.'); });
 }
 function render(){
   let html='<div class="panel"><h3>Approve, edit, or reject</h3><div class="grid">';
   lastOptions.forEach(function(o){
+    editHistory[o.id]=editHistory[o.id]||[]; batch[o.id]=batch[o.id]||[];
     html+='<div class="card" id="card'+o.id+'"><img src="'+o.image+'">'+
-      '<div class="cap"><p>'+o.caption+'</p><div class="tags">'+(o.tags||'')+'</div></div>'+
-      '<div class="acts" id="acts'+o.id+'"><button class="approve" onclick="approve('+o.id+')">✓ Approve</button><button class="editb" onclick="toggleEdit('+o.id+')">✎ Edit</button><button class="reject" onclick="reject('+o.id+')">✕ Reject</button></div>'+
-      '<div class="editbox" id="eb'+o.id+'"><div class="er"><input id="ei'+o.id+'" placeholder="What should change?"><button class="go" onclick="applyEdit('+o.id+')">Apply</button></div></div></div>';
+      '<div class="cap"><p>'+o.caption+'</p><div class="tags">'+(o.tags||'')+'</div>'+(editHistory[o.id].length?'<div style="font-size:11px;color:var(--text-secondary);margin-top:6px">'+editHistory[o.id].length+' edit'+(editHistory[o.id].length>1?'s':'')+'</div>':'')+'</div>'+
+      '<div class="acts" id="acts'+o.id+'"><button class="approve" onclick="approve('+o.id+')">✓ Approve</button><button class="editb" onclick="showBatch('+o.id+')">✎ Edit ('+(batch[o.id].length||0)+')</button><button class="reject" onclick="reject('+o.id+')">✕ Reject</button></div>'+
+      '<div class="editbox show" id="eb'+o.id+'">'+
+      '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">'+templates.map(t=>'<button class="templ" onclick="addBatch('+o.id+',\''+t.replace(/[✨🎉🎯⚡📝]/g,'').trim()+'\')" style="background:var(--secondary);border:1px solid var(--divider);color:var(--text-secondary);padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer">'+t+'</button>').join('')+
+      '</div>'+
+      '<div class="er"><input id="ei'+o.id+'" placeholder="Type your edit…" style="margin-bottom:6px"><button class="go" onclick="addBatch('+o.id+',document.getElementById(\'ei'+o.id+'\').value)">+ Add to batch</button></div>'+
+      (batch[o.id].length?'<div style="background:var(--secondary);padding:8px;border-radius:6px;font-size:12px;margin-bottom:8px"><div style="color:var(--text-secondary);margin-bottom:4px">Edits to apply:</div>'+batch[o.id].map((e,i)=>'<div style="padding:4px;color:var(--text)">'+i+1+'. '+e+' <button onclick="removeBatch('+o.id+','+i+')" style="background:none;border:none;color:var(--error);cursor:pointer;float:right;font-size:10px">✕</button></div>').join('')+'</div>':'')+'<button class="go" onclick="applyBatch('+o.id+')" style="width:100%">Apply edits</button></div>';
   });
   html+='</div></div>';
   document.getElementById('results').innerHTML=html;
   document.getElementById('memPanel').style.display='block';
 }
-function toggleEdit(id){ document.getElementById('eb'+id).classList.toggle('show'); }
-function applyEdit(id){
-  const instr=document.getElementById('ei'+id).value.trim(); if(!instr)return;
-  const card=document.getElementById('card'+id);
-  card.querySelector('.acts').outerHTML='<div class="status warn">✎ Applying your edit…</div>';
-  af('/api/options/'+id+'/edit',{method:'POST',body:JSON.stringify({instruction:instr})}).then(r=>r.json()).then(res=>{
+function showBatch(id){ batch[id]=batch[id]||[]; }
+function addBatch(id,instr){
+  if(!instr||!instr.trim())return;
+  batch[id]=batch[id]||[]; batch[id].push(instr.trim()); document.getElementById('ei'+id).value=''; render();
+}
+function removeBatch(id,i){ batch[id].splice(i,1); render(); }
+function applyBatch(id){
+  if(!batch[id]||!batch[id].length){alert('Add edits first');return;}
+  const card=document.getElementById('card'+id), instrs=batch[id].join(' + ');
+  card.querySelector('.acts').outerHTML='<div class="status warn">✎ Applying '+batch[id].length+' edit'+(batch[id].length>1?'s':'')+'…</div>';
+  af('/api/options/'+id+'/edit',{method:'POST',body:JSON.stringify({instruction:instrs})}).then(r=>r.json()).then(res=>{
     if(res.error){ alert(res.error); return; }
-    card.querySelector('img').src=res.option.image+'?t='+Date.now();
-    card.innerHTML=card.innerHTML;
+    editHistory[id].push(...batch[id]); batch[id]=[]; card.querySelector('img').src=res.option.image+'?t='+Date.now();
     reRenderCard(id,res.option);
   });
 }
 function reRenderCard(id,o){
+  editHistory[id]=editHistory[id]||[]; batch[id]=batch[id]||[];
   document.getElementById('card'+id).innerHTML='<img src="'+o.image+'">'+
-    '<div class="cap"><p>'+o.caption+'</p><div class="tags">'+(o.tags||'')+'</div></div>'+
-    '<div class="acts" id="acts'+id+'"><button class="approve" onclick="approve('+id+')">✓ Approve</button><button class="editb" onclick="toggleEdit('+id+')">✎ Edit</button><button class="reject" onclick="reject('+id+')">✕ Reject</button></div>'+
-    '<div class="editbox" id="eb'+id+'"><div class="er"><input id="ei'+id+'" placeholder="What should change?"><button class="go" onclick="applyEdit('+id+')">Apply</button></div></div>';
+    '<div class="cap"><p>'+o.caption+'</p><div class="tags">'+(o.tags||'')+'</div>'+(editHistory[id].length?'<div style="font-size:11px;color:var(--text-secondary);margin-top:6px">'+editHistory[id].length+' edit'+(editHistory[id].length>1?'s':'')+'</div>':'')+'</div>'+
+    '<div class="acts" id="acts'+id+'"><button class="approve" onclick="approve('+id+')">✓ Approve</button><button class="editb" onclick="showBatch('+id+')">✎ Edit ('+(batch[id].length||0)+')</button><button class="reject" onclick="reject('+id+')">✕ Reject</button></div>'+
+    '<div class="editbox show" id="eb'+id+'">'+
+    '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">'+templates.map(t=>'<button class="templ" onclick="addBatch('+id+',\''+t.replace(/[✨🎉🎯⚡📝]/g,'').trim()+'\')" style="background:var(--secondary);border:1px solid var(--divider);color:var(--text-secondary);padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer">'+t+'</button>').join('')+
+    '</div>'+
+    '<div class="er"><input id="ei'+id+'" placeholder="Type your edit…" style="margin-bottom:6px"><button class="go" onclick="addBatch('+id+',document.getElementById(\'ei'+id+'\').value)">+ Add to batch</button></div>'+
+    (batch[id].length?'<div style="background:var(--secondary);padding:8px;border-radius:6px;font-size:12px;margin-bottom:8px"><div style="color:var(--text-secondary);margin-bottom:4px">Edits to apply:</div>'+batch[id].map((e,i)=>'<div style="padding:4px;color:var(--text)">'+i+1+'. '+e+' <button onclick="removeBatch('+id+','+i+')" style="background:none;border:none;color:var(--error);cursor:pointer;float:right;font-size:10px">✕</button></div>').join('')+'</div>':'')+'<button class="go" onclick="applyBatch('+id+')" style="width:100%">Apply edits</button></div>';
 }
 function approve(id){ af('/api/options/'+id+'/approve',{method:'POST'}).then(r=>r.json()).then(function(){
   document.getElementById('acts'+id).outerHTML='<div class="status ok">✓ Approved — ready to post</div>'; refreshStats(); }); }
