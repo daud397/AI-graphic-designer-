@@ -17,7 +17,7 @@ const IMAGES_DIR=process.env.IMAGES_DIR||path.join(__dirname,'data','images');
 fs.mkdirSync(IMAGES_DIR,{recursive:true});
 app.use('/media',express.static(IMAGES_DIR,{maxAge:'7d'}));
 
-// ---- session-only auth: token -> { role, apiKey, exp } — apiKey lives ONLY here, in RAM ----
+// ---- session-only auth: token -> { role, apiKey, exp } ----
 const sessions=new Map();
 function newSession(role,apiKey){ const t=crypto.randomBytes(24).toString('hex'); sessions.set(t,{role,apiKey,exp:Date.now()+8*3600*1000}); return t; }
 function auth(req,res,next){ const t=req.get('x-auth-token')||''; const s=sessions.get(t);
@@ -59,25 +59,30 @@ function brandContext(){
 }
 
 // ---- auth endpoints ----
-app.post('/api/login/verify', loginLimiter, (req,res)=>{
+app.post('/api/login', loginLimiter, (req,res)=>{
   const {username,password}=req.body||{};
   if(!username) return res.status(400).json({error:'Username required'});
   if(!password) return res.status(400).json({error:'Password required'});
-  const u=db.prepare('SELECT id,name,role FROM users WHERE username=? AND password=?').get(String(username),String(password));
+  const u=db.prepare('SELECT id,name,role,api_key FROM users WHERE username=? AND password=?').get(String(username),String(password));
   if(!u) return res.status(401).json({error:'Invalid username or password'});
-  res.json({ok:true, user:u});
-});
-app.post('/api/login', loginLimiter, (req,res)=>{
-  const {username,password,apiKey}=req.body||{};
-  if(!username) return res.status(400).json({error:'Username required'});
-  if(!password) return res.status(400).json({error:'Password required'});
-  if(!apiKey || !apiKey.trim()) return res.status(400).json({error:'Please enter your OpenAI API key'});
-  const u=db.prepare('SELECT id,name,role FROM users WHERE username=? AND password=?').get(String(username),String(password));
-  if(!u) return res.status(401).json({error:'Invalid username or password'});
-  const token=newSession(u.role, apiKey.trim());
-  res.json({ok:true, user:u, token});
+  if(!u.api_key) return res.status(403).json({error:'API key not configured. Please contact admin.'});
+  const token=newSession(u.role, u.api_key);
+  res.json({ok:true, user:{id:u.id,name:u.name,role:u.role}, token});
 });
 app.post('/api/logout', auth, (req,res)=>{ sessions.delete(req.get('x-auth-token')); res.json({ok:true}); });
+
+// ---- API Key Management ----
+app.get('/api/settings', auth, (req,res)=>{
+  const u=db.prepare('SELECT id,name,api_key FROM users WHERE id=1').get();
+  res.json({name:u.name, hasApiKey:!!u.api_key});
+});
+app.post('/api/settings/api-key', auth, (req,res)=>{
+  const {apiKey}=req.body||{};
+  if(!apiKey || !apiKey.trim()) return res.status(400).json({error:'API key required'});
+  if(!apiKey.startsWith('sk-')) return res.status(400).json({error:'Invalid API key format'});
+  db.prepare('UPDATE users SET api_key=? WHERE id=1').run(apiKey.trim());
+  res.json({ok:true});
+});
 
 // ---- brand settings ----
 app.get('/api/brand', auth, (req,res)=>res.json(db.prepare('SELECT * FROM brand WHERE id=1').get()));

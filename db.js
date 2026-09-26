@@ -3,7 +3,7 @@ const DB_PATH=process.env.DB_PATH||path.join(__dirname,'data','muhsq.db');
 fs.mkdirSync(path.dirname(DB_PATH),{recursive:true});
 const db=new Database(DB_PATH); db.pragma('journal_mode = WAL');
 db.exec(`
-CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, role TEXT, username TEXT, password TEXT);
+CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, role TEXT, username TEXT, password TEXT, api_key TEXT);
 CREATE TABLE IF NOT EXISTS brand (
   id INTEGER PRIMARY KEY CHECK (id=1), name TEXT DEFAULT 'MUHSQ', tone TEXT DEFAULT 'elegant, premium, warm',
   color1 TEXT DEFAULT '#d4af37', color2 TEXT DEFAULT '#1c1116', notes TEXT DEFAULT ''
